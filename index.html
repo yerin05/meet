@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>약속 확정! 무한 캘린더</title>
+    <title>스케줄</title>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
         
@@ -17,7 +17,7 @@
             padding: 40px 20px;
             margin: 0;
             user-select: none;
-            -webkit-user-select: none; /* 모바일 텍스트 선택 방지 */
+            -webkit-user-select: none;
         }
         
         .container {
@@ -87,7 +87,6 @@
             white-space: nowrap;
         }
 
-        /* 캘린더 헤더 (월 이동) */
         .calendar-header {
             display: flex;
             justify-content: center;
@@ -113,12 +112,11 @@
         }
         .nav-btn:hover { background: #eee; color: #333; }
 
-        /* 월간 달력 그리드 */
         .calendar {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 8px;
-            touch-action: none; /* 모바일 드래그 시 화면 스크롤 방지 */
+            touch-action: none; 
         }
 
         .day-header {
@@ -159,7 +157,6 @@
             border-radius: 50%;
         }
 
-        /* 확정된 날짜 스타일 (초록색) */
         .is-confirmed {
             background-color: #E8F5E9 !important;
             border-color: #4CAF50 !important;
@@ -185,7 +182,6 @@
             margin-top: auto;
         }
 
-        /* 단계별 색상 */
         .level-0 { background-color: #ffffff; } 
         .level-1 { background-color: #ffcdd2; border-color: #ffcdd2; color: #d32f2f; } 
         .level-2 { background-color: #ef5350; border-color: #ef5350; color: white; } 
@@ -215,7 +211,6 @@
             border: 1px solid #ddd;
         }
 
-        /* === 모바일 환경(가로 600px 이하)을 위한 미디어 쿼리 === */
         @media (max-width: 600px) {
             body { padding: 10px 5px; }
             .container { padding: 20px 15px; border-radius: 16px; }
@@ -224,7 +219,7 @@
             
             .control-panel { flex-direction: column; align-items: stretch; gap: 15px; }
             .user-input { justify-content: center; }
-            .btn-confirm { margin-left: 0; } /* 모바일에선 버튼 여백 리셋 */
+            .btn-confirm { margin-left: 0; }
             .status { text-align: center; }
 
             .calendar-header h2 { font-size: 20px; width: 120px; }
@@ -251,16 +246,16 @@
         <div class="control-panel">
             <div class="user-input">
                 <input type="text" id="userName" placeholder="이름 (예: 철수)">
-                <button class="btn-input" onclick="startSelecting()">일정 입력</button>
-                <button class="btn-confirm" id="confirmBtn" onclick="toggleConfirmMode()">약속 확정 🎯</button>
+                <button class="btn-input" id="inputStartBtn">일정 입력</button>
+                <button class="btn-confirm" id="confirmBtn">약속 확정 🎯</button>
             </div>
             <div class="status" id="statusText">참여자: 0명</div>
         </div>
 
         <div class="calendar-header">
-            <button class="nav-btn" onclick="changeMonth(-1)">◀</button>
+            <button class="nav-btn" id="prevMonthBtn">◀</button>
             <h2 id="monthTitle">2026년 6월</h2>
-            <button class="nav-btn" onclick="changeMonth(1)">▶</button>
+            <button class="nav-btn" id="nextMonthBtn">▶</button>
         </div>
 
         <div class="calendar" id="calendar"></div>
@@ -274,7 +269,25 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+        // 질문자님의 실제 파이어베이스 설정값 적용 완료!
+        const firebaseConfig = {
+            apiKey: "AIzaSyD_E1AWCr1K5DDvohRwCEliiy--o4Q2kxs",
+            authDomain: "meet-95b0a.firebaseapp.com",
+            projectId: "meet-95b0a",
+            storageBucket: "meet-95b0a.firebasestorage.app",
+            messagingSenderId: "593686175187",
+            appId: "1:593686175187:web:f4b78ba7d9e41c2f2b2326",
+            databaseURL: "https://meet-95b0a-default-rtdb.firebaseio.com" // Realtime DB 주소 자동 보정
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const ROOM_ID = 'meeting_room_1';
+
         let today = new Date();
         let currentYear = today.getFullYear();
         let currentMonth = today.getMonth() + 1;
@@ -282,17 +295,44 @@
         let currentUser = "";
         let isDragging = false;
         let isSelecting = true; 
-        
         let isConfirmMode = false;
         let confirmedMeeting = null;
 
-        const scheduleData = {}; 
+        let scheduleData = {}; 
         let users = new Set(); 
 
         const calendar = document.getElementById('calendar');
         const monthTitle = document.getElementById('monthTitle');
         const statusText = document.getElementById('statusText');
         const confirmBtn = document.getElementById('confirmBtn');
+        const inputStartBtn = document.getElementById('inputStartBtn');
+
+        // 버튼 이벤트 바인딩
+        inputStartBtn.addEventListener('click', startSelecting);
+        confirmBtn.addEventListener('click', toggleConfirmMode);
+        document.getElementById('prevMonthBtn').addEventListener('click', () => changeMonth(-1));
+        document.getElementById('nextMonthBtn').addEventListener('click', () => changeMonth(1));
+
+        // 🌟 실시간 스케줄 데이터베이스 감시 시작
+        onValue(ref(db, ROOM_ID + '/scheduleData'), (snapshot) => {
+            const data = snapshot.val() || {};
+            Object.keys(scheduleData).forEach(key => scheduleData[key] = []); 
+            Object.assign(scheduleData, data);
+            updateCalendarColors();
+            
+            users.clear();
+            Object.values(data).forEach(arr => {
+                arr.forEach(name => users.add(name));
+            });
+            if(currentUser) users.add(currentUser);
+            statusText.innerText = `참여자: ${Array.from(users).join(', ')} (${users.size}명)`;
+        });
+
+        // 🌟 실시간 확정 약속 데이터베이스 감시 시작
+        onValue(ref(db, ROOM_ID + '/confirmedMeeting'), (snapshot) => {
+            confirmedMeeting = snapshot.val();
+            updateCalendarColors();
+        });
 
         function renderCalendar(year, month) {
             calendar.innerHTML = ''; 
@@ -345,7 +385,6 @@
                 cell.appendChild(locationText);
                 cell.appendChild(busyList);
                 
-                // 마우스 이벤트 연동
                 cell.addEventListener('mousedown', (e) => processCellAction(e.target.closest('.date-cell'), false));
                 cell.addEventListener('mouseenter', (e) => processCellAction(e.target.closest('.date-cell'), true));
                 
@@ -385,19 +424,16 @@
             }
         }
 
-        // 마우스와 모바일 터치를 모두 처리하는 통합 함수
         function processCellAction(cell, isHoverEvent) {
             if (!cell || cell.classList.contains('empty')) return;
             const dateKey = cell.dataset.date;
 
-            // [확정 모드] 처리
             if (isConfirmMode) {
-                if (isHoverEvent) return; // 드래그 중에는 확정 방지
+                if (isHoverEvent) return; 
                 
                 if (confirmedMeeting && confirmedMeeting.dateKey === dateKey) {
                     if (confirm("이 날짜의 약속 확정을 취소하시겠습니까?")) {
-                        confirmedMeeting = null;
-                        updateCalendarColors();
+                        set(ref(db, ROOM_ID + '/confirmedMeeting'), null);
                     }
                     toggleConfirmMode();
                     return;
@@ -407,14 +443,12 @@
                 const locationInput = prompt(`${y}년 ${m}월 ${d}일로 약속을 확정합니다!\n만날 장소나 메모를 입력해주세요:`, "강남역 2번 출구");
                 
                 if (locationInput !== null) {
-                    confirmedMeeting = { dateKey: dateKey, location: locationInput };
+                    set(ref(db, ROOM_ID + '/confirmedMeeting'), { dateKey: dateKey, location: locationInput });
                     toggleConfirmMode(); 
-                    updateCalendarColors();
                 }
                 return;
             }
 
-            // [일반 입력 모드] 처리
             if (!currentUser) { 
                 if (!isHoverEvent) alert("이름을 먼저 입력하고 [일정 입력]을 눌러주세요!"); 
                 return; 
@@ -423,7 +457,6 @@
             const myIndex = scheduleData[dateKey].indexOf(currentUser);
 
             if (!isHoverEvent) {
-                // 처음 누른 순간 (클릭)
                 isDragging = true;
                 if (myIndex > -1) {
                     isSelecting = false; 
@@ -432,118 +465,4 @@
                     isSelecting = true; 
                     scheduleData[dateKey].push(currentUser);
                 }
-            } else {
-                // 누른 채로 드래그 중일 때
-                if (isDragging) {
-                    if (isSelecting && myIndex === -1) {
-                        scheduleData[dateKey].push(currentUser);
-                    } else if (!isSelecting && myIndex > -1) {
-                        scheduleData[dateKey].splice(myIndex, 1);
-                    }
-                }
-            }
-            updateCalendarColors();
-        }
-
-        // ==== 이벤트 리스너 통합 (마우스 & 터치) ====
-        
-        // 전역 마우스 떼기 (드래그 종료)
-        document.addEventListener('mouseup', () => { isDragging = false; });
-        document.addEventListener('touchend', () => { isDragging = false; lastTouchCell = null; });
-
-        // 모바일 터치 드래그 지원 로직
-        let lastTouchCell = null;
-
-        calendar.addEventListener('touchstart', (e) => {
-            const cell = e.target.closest('.date-cell');
-            if (cell && !isConfirmMode && currentUser) {
-                e.preventDefault(); // 달력에서 터치 시 화면 스크롤 방지
-            }
-            processCellAction(cell, false);
-        }, { passive: false });
-
-        calendar.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            e.preventDefault(); // 스크롤 방지
-            
-            // 현재 손가락 위치에 있는 요소 찾기 (touchmove는 타겟이 처음 터치한 곳으로 고정되므로 이 방식 필수)
-            const touch = e.touches[0];
-            const target = document.elementFromPoint(touch.clientX, touch.clientY);
-            const cell = target ? target.closest('.date-cell') : null;
-            
-            if (cell && cell !== lastTouchCell) {
-                lastTouchCell = cell;
-                processCellAction(cell, true); // hover 이벤트처럼 처리
-            }
-        }, { passive: false });
-
-
-        function updateCalendarColors() {
-            const cells = document.querySelectorAll('.date-cell:not(.empty)');
-            cells.forEach(cell => {
-                const dateKey = cell.dataset.date;
-                const busyUsers = scheduleData[dateKey] || [];
-                const count = busyUsers.length;
-                
-                const locationTextDiv = cell.querySelector('.location-text');
-                const busyListDiv = cell.querySelector('.busy-list');
-                
-                cell.className = `date-cell level-${count}`;
-                locationTextDiv.innerText = "";
-                
-                if (count > 0) {
-                    busyListDiv.innerText = (count >= 4) ? "전원 불가" : busyUsers.join(', ') + " ❌";
-                } else {
-                    busyListDiv.innerText = "";
-                }
-
-                if (confirmedMeeting && confirmedMeeting.dateKey === dateKey) {
-                    cell.className = `date-cell is-confirmed`; 
-                    locationTextDiv.innerText = "📍 " + confirmedMeeting.location;
-                    busyListDiv.innerText = "🎉";
-                }
-            });
-        }
-
-        renderCalendar(currentYear, currentMonth);
-    </script>
-</body>
-<script>
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyD_E1AWCr1K5DDvohRwCEliiy--o4Q2kxs",
-  authDomain: "meet-95b0a.firebaseapp.com",
-  projectId: "meet-95b0a",
-  storageBucket: "meet-95b0a.firebasestorage.app",
-  messagingSenderId: "593686175187",
-  appId: "1:593686175187:web:f4b78ba7d9e41c2f2b2326"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-</script>
-<script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyD_E1AWCr1K5DDvohRwCEliiy--o4Q2kxs",
-    authDomain: "meet-95b0a.firebaseapp.com",
-    projectId: "meet-95b0a",
-    storageBucket: "meet-95b0a.firebasestorage.app",
-    messagingSenderId: "593686175187",
-    appId: "1:593686175187:web:f4b78ba7d9e41c2f2b2326"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-</script>
-</html>
+                set(
