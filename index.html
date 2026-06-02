@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>약속 확정! 무한 캘린더</title>
+    <title>스케줄 체크</title>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
         
@@ -17,7 +17,7 @@
             padding: 40px 20px;
             margin: 0;
             user-select: none;
-            -webkit-user-select: none; /* 모바일 텍스트 선택 방지 */
+            -webkit-user-select: none;
         }
         
         .container {
@@ -87,7 +87,6 @@
             white-space: nowrap;
         }
 
-        /* 캘린더 헤더 (월 이동) */
         .calendar-header {
             display: flex;
             justify-content: center;
@@ -113,12 +112,11 @@
         }
         .nav-btn:hover { background: #eee; color: #333; }
 
-        /* 월간 달력 그리드 */
         .calendar {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 8px;
-            touch-action: none; /* 모바일 드래그 시 화면 스크롤 방지 */
+            touch-action: none; 
         }
 
         .day-header {
@@ -159,7 +157,6 @@
             border-radius: 50%;
         }
 
-        /* 확정된 날짜 스타일 (초록색) */
         .is-confirmed {
             background-color: #E8F5E9 !important;
             border-color: #4CAF50 !important;
@@ -185,7 +182,6 @@
             margin-top: auto;
         }
 
-        /* 단계별 색상 */
         .level-0 { background-color: #ffffff; } 
         .level-1 { background-color: #ffcdd2; border-color: #ffcdd2; color: #d32f2f; } 
         .level-2 { background-color: #ef5350; border-color: #ef5350; color: white; } 
@@ -215,7 +211,6 @@
             border: 1px solid #ddd;
         }
 
-        /* === 모바일 환경(가로 600px 이하)을 위한 미디어 쿼리 === */
         @media (max-width: 600px) {
             body { padding: 10px 5px; }
             .container { padding: 20px 15px; border-radius: 16px; }
@@ -224,7 +219,7 @@
             
             .control-panel { flex-direction: column; align-items: stretch; gap: 15px; }
             .user-input { justify-content: center; }
-            .btn-confirm { margin-left: 0; } /* 모바일에선 버튼 여백 리셋 */
+            .btn-confirm { margin-left: 0; }
             .status { text-align: center; }
 
             .calendar-header h2 { font-size: 20px; width: 120px; }
@@ -274,7 +269,28 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <script>
+        // ==========================================
+        // 🚨 아래 괄호 안에 복사한 코드를 덮어쓰기 하세요!
+        // ==========================================
+        const firebaseConfig = {
+           apiKey: "AIzaSyBAdVAn2J7IGAKzb3jZvtMifwoSMpCw9UQ",
+  authDomain: "meet-f29bb.firebaseapp.com",
+  projectId: "meet-f29bb",
+  storageBucket: "meet-f29bb.firebasestorage.app",
+  messagingSenderId: "1060617529659",
+  appId: "1:1060617529659:web:43ead2fd9aa20889fa2f1e",
+  measurementId: "G-J5Z6H9NZ7C"
+        };
+        // ==========================================
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const ROOM_ID = 'meeting_room_1'; // 방 이름 (고정)
+
         let today = new Date();
         let currentYear = today.getFullYear();
         let currentMonth = today.getMonth() + 1;
@@ -286,13 +302,36 @@
         let isConfirmMode = false;
         let confirmedMeeting = null;
 
-        const scheduleData = {}; 
+        let scheduleData = {}; 
         let users = new Set(); 
 
         const calendar = document.getElementById('calendar');
         const monthTitle = document.getElementById('monthTitle');
         const statusText = document.getElementById('statusText');
         const confirmBtn = document.getElementById('confirmBtn');
+
+        // 🔥 서버에서 실시간으로 데이터 받아오기
+        db.ref(ROOM_ID + '/scheduleData').on('value', (snapshot) => {
+            const data = snapshot.val() || {};
+            // 로컬 데이터 초기화 후 서버 데이터로 덮어쓰기
+            Object.keys(scheduleData).forEach(key => scheduleData[key] = []); 
+            Object.assign(scheduleData, data);
+            updateCalendarColors();
+            
+            // 참여자 수 계산
+            users.clear();
+            Object.values(data).forEach(arr => {
+                arr.forEach(name => users.add(name));
+            });
+            if(currentUser) users.add(currentUser);
+            statusText.innerText = `참여자: ${Array.from(users).join(', ')} (${users.size}명)`;
+        });
+
+        // 🔥 서버에서 실시간으로 확정된 약속 받아오기
+        db.ref(ROOM_ID + '/confirmedMeeting').on('value', (snapshot) => {
+            confirmedMeeting = snapshot.val();
+            updateCalendarColors();
+        });
 
         function renderCalendar(year, month) {
             calendar.innerHTML = ''; 
@@ -345,7 +384,6 @@
                 cell.appendChild(locationText);
                 cell.appendChild(busyList);
                 
-                // 마우스 이벤트 연동
                 cell.addEventListener('mousedown', (e) => processCellAction(e.target.closest('.date-cell'), false));
                 cell.addEventListener('mouseenter', (e) => processCellAction(e.target.closest('.date-cell'), true));
                 
@@ -385,19 +423,25 @@
             }
         }
 
-        // 마우스와 모바일 터치를 모두 처리하는 통합 함수
+        // DB에 저장하는 함수들
+        function saveScheduleToDB(dateKey) {
+            db.ref(ROOM_ID + '/scheduleData/' + dateKey).set(scheduleData[dateKey]);
+        }
+        function saveConfirmToDB(meetingData) {
+            db.ref(ROOM_ID + '/confirmedMeeting').set(meetingData);
+        }
+
         function processCellAction(cell, isHoverEvent) {
             if (!cell || cell.classList.contains('empty')) return;
             const dateKey = cell.dataset.date;
 
             // [확정 모드] 처리
             if (isConfirmMode) {
-                if (isHoverEvent) return; // 드래그 중에는 확정 방지
+                if (isHoverEvent) return; 
                 
                 if (confirmedMeeting && confirmedMeeting.dateKey === dateKey) {
                     if (confirm("이 날짜의 약속 확정을 취소하시겠습니까?")) {
-                        confirmedMeeting = null;
-                        updateCalendarColors();
+                        saveConfirmToDB(null); // 서버에서 확정 삭제
                     }
                     toggleConfirmMode();
                     return;
@@ -407,9 +451,8 @@
                 const locationInput = prompt(`${y}년 ${m}월 ${d}일로 약속을 확정합니다!\n만날 장소나 메모를 입력해주세요:`, "강남역 2번 출구");
                 
                 if (locationInput !== null) {
-                    confirmedMeeting = { dateKey: dateKey, location: locationInput };
+                    saveConfirmToDB({ dateKey: dateKey, location: locationInput }); // 서버에 확정 저장
                     toggleConfirmMode(); 
-                    updateCalendarColors();
                 }
                 return;
             }
@@ -423,7 +466,6 @@
             const myIndex = scheduleData[dateKey].indexOf(currentUser);
 
             if (!isHoverEvent) {
-                // 처음 누른 순간 (클릭)
                 isDragging = true;
                 if (myIndex > -1) {
                     isSelecting = false; 
@@ -432,48 +474,46 @@
                     isSelecting = true; 
                     scheduleData[dateKey].push(currentUser);
                 }
+                saveScheduleToDB(dateKey); // 칠하자마자 서버에 저장!
             } else {
-                // 누른 채로 드래그 중일 때
                 if (isDragging) {
+                    let changed = false;
                     if (isSelecting && myIndex === -1) {
                         scheduleData[dateKey].push(currentUser);
+                        changed = true;
                     } else if (!isSelecting && myIndex > -1) {
                         scheduleData[dateKey].splice(myIndex, 1);
+                        changed = true;
                     }
+                    if(changed) saveScheduleToDB(dateKey); // 드래그 할 때마다 서버에 저장!
                 }
             }
-            updateCalendarColors();
         }
-
-        // ==== 이벤트 리스너 통합 (마우스 & 터치) ====
         
-        // 전역 마우스 떼기 (드래그 종료)
         document.addEventListener('mouseup', () => { isDragging = false; });
         document.addEventListener('touchend', () => { isDragging = false; lastTouchCell = null; });
 
-        // 모바일 터치 드래그 지원 로직
         let lastTouchCell = null;
 
         calendar.addEventListener('touchstart', (e) => {
             const cell = e.target.closest('.date-cell');
             if (cell && !isConfirmMode && currentUser) {
-                e.preventDefault(); // 달력에서 터치 시 화면 스크롤 방지
+                e.preventDefault(); 
             }
             processCellAction(cell, false);
         }, { passive: false });
 
         calendar.addEventListener('touchmove', (e) => {
             if (!isDragging) return;
-            e.preventDefault(); // 스크롤 방지
+            e.preventDefault(); 
             
-            // 현재 손가락 위치에 있는 요소 찾기 (touchmove는 타겟이 처음 터치한 곳으로 고정되므로 이 방식 필수)
             const touch = e.touches[0];
             const target = document.elementFromPoint(touch.clientX, touch.clientY);
             const cell = target ? target.closest('.date-cell') : null;
             
             if (cell && cell !== lastTouchCell) {
                 lastTouchCell = cell;
-                processCellAction(cell, true); // hover 이벤트처럼 처리
+                processCellAction(cell, true); 
             }
         }, { passive: false });
 
