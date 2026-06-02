@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>약속 확정! 무한 캘린더</title>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -17,6 +17,7 @@
             padding: 40px 20px;
             margin: 0;
             user-select: none;
+            -webkit-user-select: none; /* 모바일 텍스트 선택 방지 */
         }
         
         .container {
@@ -26,10 +27,11 @@
             box-shadow: 0 10px 40px rgba(0,0,0,0.08);
             max-width: 800px;
             width: 100%;
+            box-sizing: border-box;
         }
 
         h1 { text-align: center; color: #333; margin-bottom: 5px; font-weight: 800; font-size: 28px; }
-        p.subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 15px; }
+        p.subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 15px; word-break: keep-all; line-height: 1.4; }
 
         .control-panel {
             display: flex;
@@ -38,9 +40,10 @@
             margin-bottom: 25px;
             padding-bottom: 20px;
             border-bottom: 2px dashed #eee;
+            gap: 15px;
         }
 
-        .user-input { display: flex; gap: 8px; }
+        .user-input { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; }
         
         input[type="text"] {
             padding: 12px 15px;
@@ -50,12 +53,14 @@
             outline: none;
             transition: 0.2s;
             width: 130px;
+            flex: 1;
+            min-width: 100px;
+            box-sizing: border-box;
         }
         input[type="text"]:focus { border-color: #E53935; }
 
-        .btn-input {
+        .btn-input, .btn-confirm {
             padding: 12px 15px;
-            background-color: #E53935;
             color: white;
             border: none;
             border-radius: 10px;
@@ -63,21 +68,12 @@
             font-weight: bold;
             cursor: pointer;
             transition: 0.2s;
+            white-space: nowrap;
         }
+        .btn-input { background-color: #E53935; }
         .btn-input:hover { background-color: #C62828; }
 
-        .btn-confirm {
-            padding: 12px 15px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.2s;
-            margin-left: 10px;
-        }
+        .btn-confirm { background-color: #4CAF50; margin-left: auto; }
         .btn-confirm:hover { background-color: #388E3C; }
         .btn-confirm.active { background-color: #1B5E20; box-shadow: 0 0 0 3px #A5D6A7; }
 
@@ -88,6 +84,7 @@
             padding: 10px 15px;
             border-radius: 20px;
             font-weight: bold;
+            white-space: nowrap;
         }
 
         /* 캘린더 헤더 (월 이동) */
@@ -102,7 +99,7 @@
             margin: 0;
             font-size: 24px;
             color: #E53935;
-            width: 160px;
+            width: 140px;
             text-align: center;
         }
         .nav-btn {
@@ -121,6 +118,7 @@
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 8px;
+            touch-action: none; /* 모바일 드래그 시 화면 스크롤 방지 */
         }
 
         .day-header {
@@ -147,7 +145,7 @@
             position: relative;
         }
         
-        .date-cell:not(.empty):hover { border-color: #ffcdd2; transform: translateY(-2px); }
+        .date-cell:not(.empty):hover { border-color: #ffcdd2; }
         .empty { background-color: transparent; border: none; cursor: default; }
 
         .date-num { 
@@ -216,6 +214,32 @@
             margin-right: 6px;
             border: 1px solid #ddd;
         }
+
+        /* === 모바일 환경(가로 600px 이하)을 위한 미디어 쿼리 === */
+        @media (max-width: 600px) {
+            body { padding: 10px 5px; }
+            .container { padding: 20px 15px; border-radius: 16px; }
+            h1 { font-size: 22px; }
+            .subtitle { font-size: 13px; }
+            
+            .control-panel { flex-direction: column; align-items: stretch; gap: 15px; }
+            .user-input { justify-content: center; }
+            .btn-confirm { margin-left: 0; } /* 모바일에선 버튼 여백 리셋 */
+            .status { text-align: center; }
+
+            .calendar-header h2 { font-size: 20px; width: 120px; }
+            .calendar { gap: 4px; }
+            
+            .date-cell { height: 75px; padding: 4px; border-radius: 8px; }
+            .day-header { font-size: 12px; }
+            .date-num { width: 22px; height: 22px; font-size: 13px; }
+            
+            .busy-list { font-size: 9px; line-height: 1.1; }
+            .location-text { font-size: 9px; margin-top: 2px; }
+            
+            .legend { gap: 10px; padding: 10px; font-size: 11px; }
+            .legend-box { width: 12px; height: 12px; }
+        }
     </style>
 </head>
 <body>
@@ -242,7 +266,7 @@
         <div class="calendar" id="calendar"></div>
 
         <div class="legend">
-            <span><div class="legend-box level-0"></div>약속 가능!</span>
+            <span><div class="legend-box level-0"></div>가능!</span>
             <span><div class="legend-box level-1"></div>1명 안됨</span>
             <span><div class="legend-box level-2"></div>2명 안됨</span>
             <span><div class="legend-box level-4" style="background:#212121"></div>전원 불가 ☠️</span>
@@ -259,9 +283,8 @@
         let isDragging = false;
         let isSelecting = true; 
         
-        // 새로 추가된 변수: 확정 모드 상태 및 확정된 데이터 저장소
         let isConfirmMode = false;
-        let confirmedMeeting = null; // 예: { dateKey: "2026-6-20", location: "강남역 2번 출구" }
+        let confirmedMeeting = null;
 
         const scheduleData = {}; 
         let users = new Set(); 
@@ -299,14 +322,12 @@
 
             for (let date = 1; date <= lastDate; date++) {
                 const fullDateKey = `${year}-${month}-${date}`;
-                
                 if (!scheduleData[fullDateKey]) { scheduleData[fullDateKey] = []; }
 
                 const cell = document.createElement('div');
                 cell.className = 'date-cell level-0';
                 cell.dataset.date = fullDateKey;
                 
-                // 날짜 번호 표시
                 const dateNum = document.createElement('div');
                 dateNum.className = 'date-num';
                 dateNum.innerText = date;
@@ -314,11 +335,9 @@
                 if (currentDay === 0) dateNum.classList.add('sun');
                 if (currentDay === 6) dateNum.classList.add('sat');
                 
-                // 장소 표시 텍스트 (확정 시 나타남)
                 const locationText = document.createElement('div');
                 locationText.className = 'location-text';
 
-                // 바쁜 사람 리스트
                 const busyList = document.createElement('div');
                 busyList.className = 'busy-list';
                 
@@ -326,8 +345,9 @@
                 cell.appendChild(locationText);
                 cell.appendChild(busyList);
                 
-                cell.addEventListener('mousedown', handleMouseDown);
-                cell.addEventListener('mouseenter', handleMouseEnter);
+                // 마우스 이벤트 연동
+                cell.addEventListener('mousedown', (e) => processCellAction(e.target.closest('.date-cell'), false));
+                cell.addEventListener('mouseenter', (e) => processCellAction(e.target.closest('.date-cell'), true));
                 
                 calendar.appendChild(cell);
             }
@@ -341,10 +361,8 @@
             renderCalendar(currentYear, currentMonth);
         }
 
-        document.addEventListener('mouseup', () => { isDragging = false; });
-
         function startSelecting() {
-            if (isConfirmMode) toggleConfirmMode(); // 확정 모드 끄기
+            if (isConfirmMode) toggleConfirmMode(); 
             
             const name = document.getElementById('userName').value.trim();
             if (!name) { alert("이름을 먼저 입력해주세요!"); return; }
@@ -356,83 +374,109 @@
             alert(`[${name}]님, 달력에서 '안 되는 날짜'를 찍어주세요!`);
         }
 
-        // 확정 모드 켜기/끄기
         function toggleConfirmMode() {
             isConfirmMode = !isConfirmMode;
             if (isConfirmMode) {
                 confirmBtn.classList.add('active');
-                confirmBtn.innerText = "확정할 날짜 클릭 중...";
-                alert("약속을 확정할 날짜를 달력에서 클릭하세요!\n(이미 확정된 날짜를 클릭하면 취소됩니다)");
+                confirmBtn.innerText = "확정 날짜 찍기...";
             } else {
                 confirmBtn.classList.remove('active');
                 confirmBtn.innerText = "약속 확정 🎯";
             }
         }
 
-        function handleMouseDown(e) {
-            const cell = e.target.closest('.date-cell');
+        // 마우스와 모바일 터치를 모두 처리하는 통합 함수
+        function processCellAction(cell, isHoverEvent) {
             if (!cell || cell.classList.contains('empty')) return;
             const dateKey = cell.dataset.date;
 
-            // [확정 모드] 일 때의 로직
+            // [확정 모드] 처리
             if (isConfirmMode) {
-                // 이미 확정된 날짜를 다시 누르면 확정 취소
+                if (isHoverEvent) return; // 드래그 중에는 확정 방지
+                
                 if (confirmedMeeting && confirmedMeeting.dateKey === dateKey) {
                     if (confirm("이 날짜의 약속 확정을 취소하시겠습니까?")) {
                         confirmedMeeting = null;
                         updateCalendarColors();
                     }
-                    toggleConfirmMode(); // 취소 후 확정 모드 종료
+                    toggleConfirmMode();
                     return;
                 }
                 
-                // 새로운 날짜 확정 프로세스
                 const [y, m, d] = dateKey.split('-');
                 const locationInput = prompt(`${y}년 ${m}월 ${d}일로 약속을 확정합니다!\n만날 장소나 메모를 입력해주세요:`, "강남역 2번 출구");
                 
                 if (locationInput !== null) {
                     confirmedMeeting = { dateKey: dateKey, location: locationInput };
-                    toggleConfirmMode(); // 확정 완료 후 모드 끄기
+                    toggleConfirmMode(); 
                     updateCalendarColors();
                 }
                 return;
             }
 
-            // [일반 입력 모드] 일 때의 로직
-            if (!currentUser) { alert("이름을 먼저 입력하고 [일정 입력]을 눌러주세요!"); return; }
+            // [일반 입력 모드] 처리
+            if (!currentUser) { 
+                if (!isHoverEvent) alert("이름을 먼저 입력하고 [일정 입력]을 눌러주세요!"); 
+                return; 
+            }
             
-            isDragging = true;
             const myIndex = scheduleData[dateKey].indexOf(currentUser);
 
-            if (myIndex > -1) {
-                isSelecting = false; 
-                scheduleData[dateKey].splice(myIndex, 1);
+            if (!isHoverEvent) {
+                // 처음 누른 순간 (클릭)
+                isDragging = true;
+                if (myIndex > -1) {
+                    isSelecting = false; 
+                    scheduleData[dateKey].splice(myIndex, 1);
+                } else {
+                    isSelecting = true; 
+                    scheduleData[dateKey].push(currentUser);
+                }
             } else {
-                isSelecting = true; 
-                scheduleData[dateKey].push(currentUser);
+                // 누른 채로 드래그 중일 때
+                if (isDragging) {
+                    if (isSelecting && myIndex === -1) {
+                        scheduleData[dateKey].push(currentUser);
+                    } else if (!isSelecting && myIndex > -1) {
+                        scheduleData[dateKey].splice(myIndex, 1);
+                    }
+                }
             }
             updateCalendarColors();
         }
 
-        function handleMouseEnter(e) {
-            // 확정 모드일 때는 드래그 비활성화
-            if (isConfirmMode) return;
-            
-            if (isDragging && currentUser) {
-                const cell = e.target.closest('.date-cell');
-                if (!cell || cell.classList.contains('empty')) return;
+        // ==== 이벤트 리스너 통합 (마우스 & 터치) ====
+        
+        // 전역 마우스 떼기 (드래그 종료)
+        document.addEventListener('mouseup', () => { isDragging = false; });
+        document.addEventListener('touchend', () => { isDragging = false; lastTouchCell = null; });
 
-                const dateKey = cell.dataset.date;
-                const myIndex = scheduleData[dateKey].indexOf(currentUser);
+        // 모바일 터치 드래그 지원 로직
+        let lastTouchCell = null;
 
-                if (isSelecting && myIndex === -1) {
-                    scheduleData[dateKey].push(currentUser);
-                } else if (!isSelecting && myIndex > -1) {
-                    scheduleData[dateKey].splice(myIndex, 1);
-                }
-                updateCalendarColors();
+        calendar.addEventListener('touchstart', (e) => {
+            const cell = e.target.closest('.date-cell');
+            if (cell && !isConfirmMode && currentUser) {
+                e.preventDefault(); // 달력에서 터치 시 화면 스크롤 방지
             }
-        }
+            processCellAction(cell, false);
+        }, { passive: false });
+
+        calendar.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault(); // 스크롤 방지
+            
+            // 현재 손가락 위치에 있는 요소 찾기 (touchmove는 타겟이 처음 터치한 곳으로 고정되므로 이 방식 필수)
+            const touch = e.touches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            const cell = target ? target.closest('.date-cell') : null;
+            
+            if (cell && cell !== lastTouchCell) {
+                lastTouchCell = cell;
+                processCellAction(cell, true); // hover 이벤트처럼 처리
+            }
+        }, { passive: false });
+
 
         function updateCalendarColors() {
             const cells = document.querySelectorAll('.date-cell:not(.empty)');
@@ -444,7 +488,6 @@
                 const locationTextDiv = cell.querySelector('.location-text');
                 const busyListDiv = cell.querySelector('.busy-list');
                 
-                // 기본 '바쁜 사람' 초기화
                 cell.className = `date-cell level-${count}`;
                 locationTextDiv.innerText = "";
                 
@@ -454,9 +497,8 @@
                     busyListDiv.innerText = "";
                 }
 
-                // 확정된 날짜 덮어쓰기 (가장 높은 우선순위)
                 if (confirmedMeeting && confirmedMeeting.dateKey === dateKey) {
-                    cell.className = `date-cell is-confirmed`; // 기존 level 클래스 덮어버림
+                    cell.className = `date-cell is-confirmed`; 
                     locationTextDiv.innerText = "📍 " + confirmedMeeting.location;
                     busyListDiv.innerText = "🎉";
                 }
