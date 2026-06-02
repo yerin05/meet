@@ -240,12 +240,12 @@
 <body>
 
     <div class="container">
-        <h1>스케ㅔ줄 📅</h1>
-        <p class="subtitle">이름을 적고 <b>'약속 불가능한 날짜'</b>선택하기<br>합의가 끝나면 <b>약속 확정~</b> </p>
+        <h1>우스케ㅔㅔ줄📅</h1>
+        <p class="subtitle">이름을 적고 <b>'약속 불가능한 날짜'</b>선택<br>합의가 끝나면 <b>약속 확정~</p>
 
         <div class="control-panel">
             <div class="user-input">
-                <input type="text" id="userName" placeholder="이름 입력">
+                <input type="text" id="userName" placeholder="이름 ">
                 <button class="btn-input" id="inputStartBtn">일정 입력</button>
                 <button class="btn-confirm" id="confirmBtn">약속 확정 🎯</button>
             </div>
@@ -286,11 +286,9 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // 주소창 파라미터 자동 분석 (?room=값)
         const urlParams = new URLSearchParams(window.location.search);
         const ROOM_ID = urlParams.get('room') || 'default_room';
 
-        // 방 이름이 있으면 자막에 표시
         const subtitleEl = document.querySelector('.subtitle');
         if (ROOM_ID !== 'default_room') {
             subtitleEl.innerHTML += `<br><span style="color:#4CAF50; font-weight:bold;">🏠 현재 방 ID: ${ROOM_ID}</span>`;
@@ -304,7 +302,9 @@
         let isDragging = false;
         let isSelecting = true; 
         let isConfirmMode = false;
-        let confirmedMeeting = null;
+        
+        // 🌟 [변경점] 단일 오브젝트가 아니라 복수 지정을 위해 딕셔너리로 변경
+        let confirmedMeetings = {}; 
 
         let scheduleData = {}; 
         let users = new Set(); 
@@ -335,9 +335,9 @@
             statusText.innerText = `참여자: ${Array.from(users).join(', ')} (${users.size}명)`;
         });
 
-        // 실시간 확정 약속 동기화
-        onValue(ref(db, ROOM_ID + '/confirmedMeeting'), (snapshot) => {
-            confirmedMeeting = snapshot.val();
+        // 🌟 [변경점] 실시간 복수 확정 데이터 동기화 감시
+        onValue(ref(db, ROOM_ID + '/confirmedMeetings'), (snapshot) => {
+            confirmedMeetings = snapshot.val() || {};
             updateCalendarColors();
         });
 
@@ -411,13 +411,13 @@
             if (isConfirmMode) toggleConfirmMode(); 
             
             const name = document.getElementById('userName').value.trim();
-            if (!name) { alert("이름을 먼저 입력해주세요!"); return; }
+            if (!name) { alert("이름 먼저 입력해주삼~"); return; }
             if (users.size >= 4 && !users.has(name)) { alert("이미 4명이 꽉 찼습니다!"); return; }
 
             currentUser = name;
             users.add(name);
             statusText.innerText = `참여자: ${Array.from(users).join(', ')} (${users.size}명)`;
-            alert(`[${name}]님, 달력에서 '안 되는 날짜'를 찍어주세요!`);
+            alert(`[${name}]님, 달력에서 '안 되는 날짜' 선택!`);
         }
 
         function toggleConfirmMode() {
@@ -427,7 +427,7 @@
                 confirmBtn.innerText = "확정 날짜 찍기...";
             } else {
                 confirmBtn.classList.remove('active');
-                confirmBtn.innerText = "약속 확정 🎯";
+                confirmBtn.innerText = "약속 확정~🎯";
             }
         }
 
@@ -435,12 +435,14 @@
             if (!cell || cell.classList.contains('empty')) return;
             const dateKey = cell.dataset.date;
 
+            // [확정 모드] 처리
             if (isConfirmMode) {
                 if (isHoverEvent) return; 
                 
-                if (confirmedMeeting && confirmedMeeting.dateKey === dateKey) {
+                // 🌟 [변경점] 이미 등록된 약속이 있다면 해당 날짜만 개별 취소 가능
+                if (confirmedMeetings && confirmedMeetings[dateKey]) {
                     if (confirm("이 날짜의 약속 확정을 취소하시겠습니까?")) {
-                        set(ref(db, ROOM_ID + '/confirmedMeeting'), null);
+                        set(ref(db, ROOM_ID + '/confirmedMeetings/' + dateKey), null);
                     }
                     toggleConfirmMode();
                     return;
@@ -450,12 +452,14 @@
                 const locationInput = prompt(`${y}년 ${m}월 ${d}일로 약속을 확정합니다!\n만날 장소나 메모를 입력해주세요:`, "강남역 2번 출구");
                 
                 if (locationInput !== null) {
-                    set(ref(db, ROOM_ID + '/confirmedMeeting'), { dateKey: dateKey, location: locationInput });
+                    // 🌟 [변경점] 덮어쓰지 않고 날짜 고유 키값 밑에 각각 저장
+                    set(ref(db, ROOM_ID + '/confirmedMeetings/' + dateKey), { location: locationInput });
                     toggleConfirmMode(); 
                 }
                 return;
             }
 
+            // [일반 입력 모드] 처리
             if (!currentUser) { 
                 if (!isHoverEvent) alert("이름을 먼저 입력하고 [일정 입력]을 눌러주세요!"); 
                 return; 
@@ -534,9 +538,10 @@
                     busyListDiv.innerText = "";
                 }
 
-                if (confirmedMeeting && confirmedMeeting.dateKey === dateKey) {
+                // 🌟 [변경점] 딕셔너리 안에 내 날짜 키가 들어있다면 전부 초록색으로 활성화
+                if (confirmedMeetings && confirmedMeetings[dateKey]) {
                     cell.className = `date-cell is-confirmed`; 
-                    locationTextDiv.innerText = "📍 " + confirmedMeeting.location;
+                    locationTextDiv.innerText = "📍 " + confirmedMeetings[dateKey].location;
                     busyListDiv.innerText = "🎉";
                 }
             });
