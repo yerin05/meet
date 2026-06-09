@@ -180,12 +180,16 @@
             text-align: right; 
             word-break: keep-all; 
             margin-top: auto;
+            overflow: hidden; /* 인원이 많아져도 셀 밖으로 글자가 터지지 않게 보호 */
+            text-overflow: ellipsis;
         }
 
+        /* 🎨 주신 스타일 색상 그대로 유지 */
         .level-0 { background-color: #ffffff; } 
         .level-1 { background-color: #ffcdd2; border-color: #ffcdd2; color: #d32f2f; } 
         .level-2 { background-color: #ef5350; border-color: #ef5350; color: white; } 
         .level-3 { background-color: #c62828; border-color: #c62828; color: white; } 
+        /* 4명 이상은 전부 최고 불가능 단계(검은색)로 깔끔하게 떨어지도록 매핑 처리 */
         .level-4 { background-color: #212121; border-color: #212121; color: white; } 
 
         .legend {
@@ -241,7 +245,7 @@
 
     <div class="container">
         <h1>스케ㅔㅔ줄📅</h1>
-        <p class="subtitle">이름을 적고 <b>'약속 불가능한 날짜'</b>선택<br>합의가 끝나면 <b>약속 확정~</p>
+        <p class="subtitle">이름을 적고 <b>'약속 불가능한 날짜'</b>선택<br>합의가 끝나면 <b>약속 확정~</b></p>
 
         <div class="control-panel">
             <div class="user-input">
@@ -264,7 +268,7 @@
             <span><div class="legend-box level-0"></div>가능!</span>
             <span><div class="legend-box level-1"></div>1명 안됨</span>
             <span><div class="legend-box level-2"></div>2명 안됨</span>
-            <span><div class="legend-box level-4" style="background:#212121"></div>전원 불가 ☠️</span>
+            <span><div class="legend-box level-4" style="background:#212121"></div>4명 이상 불가 ☠️</span>
             <span><div class="legend-box" style="background:#4CAF50; border-radius:50%"></div><b>약속 확정!</b></span>
         </div>
     </div>
@@ -303,7 +307,6 @@
         let isSelecting = true; 
         let isConfirmMode = false;
         
-        // 🌟 [변경점] 단일 오브젝트가 아니라 복수 지정을 위해 딕셔너리로 변경
         let confirmedMeetings = {}; 
 
         let scheduleData = {}; 
@@ -335,7 +338,7 @@
             statusText.innerText = `참여자: ${Array.from(users).join(', ')} (${users.size}명)`;
         });
 
-        // 🌟 [변경점] 실시간 복수 확정 데이터 동기화 감시
+        // 실시간 복수 확정 데이터 동기화 감시
         onValue(ref(db, ROOM_ID + '/confirmedMeetings'), (snapshot) => {
             confirmedMeetings = snapshot.val() || {};
             updateCalendarColors();
@@ -412,7 +415,8 @@
             
             const name = document.getElementById('userName').value.trim();
             if (!name) { alert("이름 먼저 입력해주삼~"); return; }
-            if (users.size >= 4 && !users.has(name)) { alert("이미 4명이 꽉 찼습니다!"); return; }
+            
+            // 🌟 [수정 완료] 인원 체크(size >= 4) 로직을 아예 삭제하여 무제한 입력 가능하도록 변경!
 
             currentUser = name;
             users.add(name);
@@ -435,11 +439,9 @@
             if (!cell || cell.classList.contains('empty')) return;
             const dateKey = cell.dataset.date;
 
-            // [확정 모드] 처리
             if (isConfirmMode) {
                 if (isHoverEvent) return; 
                 
-                // 🌟 [변경점] 이미 등록된 약속이 있다면 해당 날짜만 개별 취소 가능
                 if (confirmedMeetings && confirmedMeetings[dateKey]) {
                     if (confirm("이 날짜의 약속 확정을 취소하시겠습니까?")) {
                         set(ref(db, ROOM_ID + '/confirmedMeetings/' + dateKey), null);
@@ -452,14 +454,12 @@
                 const locationInput = prompt(`${y}년 ${m}월 ${d}일로 약속을 확정합니다!\n만날 장소나 메모를 입력해주세요:`, "강남역 2번 출구");
                 
                 if (locationInput !== null) {
-                    // 🌟 [변경점] 덮어쓰지 않고 날짜 고유 키값 밑에 각각 저장
                     set(ref(db, ROOM_ID + '/confirmedMeetings/' + dateKey), { location: locationInput });
                     toggleConfirmMode(); 
                 }
                 return;
             }
 
-            // [일반 입력 모드] 처리
             if (!currentUser) { 
                 if (!isHoverEvent) alert("이름을 먼저 입력하고 [일정 입력]을 눌러주세요!"); 
                 return; 
@@ -529,16 +529,22 @@
                 const locationTextDiv = cell.querySelector('.location-text');
                 const busyListDiv = cell.querySelector('.busy-list');
                 
-                cell.className = `date-cell level-${count}`;
+                // 🌟 [안전 보정] 인원이 4명 이상 넘어가도 스타일이 깨지지 않게 최댓값을 level-4로 제한 고정
+                const levelStyle = count > 4 ? 4 : count;
+                cell.className = `date-cell level-${levelStyle}`;
                 locationTextDiv.innerText = "";
                 
                 if (count > 0) {
-                    busyListDiv.innerText = (count >= 4) ? "전원 불가" : busyUsers.join(', ') + " ❌";
+                    // 🌟 인원이 많아 이름이 터지는 것을 방지하기 위해 3명 초과 시 '외 X명' 요약 처리 가독성 업그레이드
+                    if (count > 3) {
+                        busyListDiv.innerText = `${busyUsers.slice(0, 2).join(', ')} 외 ${count - 2}명 ❌`;
+                    } else {
+                        busyListDiv.innerText = busyUsers.join(', ') + " ❌";
+                    }
                 } else {
                     busyListDiv.innerText = "";
                 }
 
-                // 🌟 [변경점] 딕셔너리 안에 내 날짜 키가 들어있다면 전부 초록색으로 활성화
                 if (confirmedMeetings && confirmedMeetings[dateKey]) {
                     cell.className = `date-cell is-confirmed`; 
                     locationTextDiv.innerText = "📍 " + confirmedMeetings[dateKey].location;
