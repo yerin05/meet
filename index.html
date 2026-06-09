@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>약속 확정! 무한 캘린더 (15인용)</title>
+    <title>일정</title>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
         
@@ -84,8 +84,6 @@
             padding: 10px 15px;
             border-radius: 20px;
             font-weight: bold;
-            max-width: 100%;
-            overflow-x: auto;
             white-space: nowrap;
         }
 
@@ -135,15 +133,14 @@
             background-color: #fff;
             border: 2px solid #eee;
             border-radius: 12px;
-            height: 105px; /* 단체 인원 표기를 위해 높이 소폭 확장 */
+            height: 95px;
             display: flex;
             flex-direction: column;
-            padding: 6px;
+            padding: 8px;
             cursor: pointer;
             transition: all 0.1s;
             box-sizing: border-box;
             position: relative;
-            overflow: hidden;
         }
         
         .date-cell:not(.empty):hover { border-color: #ffcdd2; }
@@ -151,12 +148,12 @@
 
         .date-num { 
             font-weight: bold; 
-            font-size: 15px; 
+            font-size: 16px; 
             display: inline-flex;
             justify-content: center;
             align-items: center;
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
         }
 
@@ -170,31 +167,26 @@
         }
         .location-text {
             color: #2E7D32;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: bold;
             margin-top: 4px;
             word-break: keep-all;
         }
 
         .busy-list { 
-            font-size: 10px; 
-            line-height: 1.2; 
+            font-size: 11px; 
+            line-height: 1.3; 
             font-weight: bold; 
             text-align: right; 
             word-break: keep-all; 
             margin-top: auto;
-            max-height: 55px;
-            overflow-y: hidden;
         }
 
-        /* 🎨 15명 규모에 맞춘 세분화된 레드 그라데이션 시스템 */
-        .level-0 { background-color: #ffffff; color: #333; } 
-        .level-1, .level-2, .level-3 { background-color: #ffebee; border-color: #ffebee; color: #c62828; } 
-        .level-4, .level-5, .level-6 { background-color: #ffcdd2; border-color: #ffcdd2; color: #c62828; } 
-        .level-7, .level-8, .level-9 { background-color: #ef9a9a; border-color: #ef9a9a; color: #b71c1c; } 
-        .level-10, .level-11, .level-12 { background-color: #ef5350; border-color: #ef5350; color: white; } 
-        .level-13, .level-14 { background-color: #c62828; border-color: #c62828; color: white; } 
-        .level-15 { background-color: #212121; border-color: #212121; color: white; } 
+        .level-0 { background-color: #ffffff; } 
+        .level-1 { background-color: #ffcdd2; border-color: #ffcdd2; color: #d32f2f; } 
+        .level-2 { background-color: #ef5350; border-color: #ef5350; color: white; } 
+        .level-3 { background-color: #c62828; border-color: #c62828; color: white; } 
+        .level-4 { background-color: #212121; border-color: #212121; color: white; } 
 
         .legend {
             display: flex;
@@ -233,12 +225,12 @@
             .calendar-header h2 { font-size: 20px; width: 120px; }
             .calendar { gap: 4px; }
             
-            .date-cell { height: 85px; padding: 4px; border-radius: 8px; }
+            .date-cell { height: 75px; padding: 4px; border-radius: 8px; }
             .day-header { font-size: 12px; }
-            .date-num { width: 20px; height: 20px; font-size: 12px; }
+            .date-num { width: 22px; height: 22px; font-size: 13px; }
             
-            .busy-list { font-size: 8px; line-height: 1.1; }
-            .location-text { font-size: 8px; margin-top: 2px; }
+            .busy-list { font-size: 9px; line-height: 1.1; }
+            .location-text { font-size: 9px; margin-top: 2px; }
             
             .legend { gap: 10px; padding: 10px; font-size: 11px; }
             .legend-box { width: 12px; height: 12px; }
@@ -248,12 +240,12 @@
 <body>
 
     <div class="container">
-        <h1>우리 언제 봐? 📅</h1>
-        <p class="subtitle">이름을 적고 <b>'약속 불가능한 날짜'</b>를 지워주세요!<br>합의가 끝나면 <b>[약속 확정]</b> 버튼을 눌러 날짜와 장소를 정할 수 있습니다.</p>
+        <h1>스케ㅔㅔ줄📅</h1>
+        <p class="subtitle">이름을 적고 <b>'약속 불가능한 날짜'</b>선택<br>합의가 끝나면 <b>약속 확정~</p>
 
         <div class="control-panel">
             <div class="user-input">
-                <input type="text" id="userName" placeholder="이름 (예: 철수)">
+                <input type="text" id="userName" placeholder="이름 ">
                 <button class="btn-input" id="inputStartBtn">일정 입력</button>
                 <button class="btn-confirm" id="confirmBtn">약속 확정 🎯</button>
             </div>
@@ -270,12 +262,9 @@
 
         <div class="legend">
             <span><div class="legend-box level-0"></div>가능!</span>
-            <span><div class="legend-box level-1"></div>1~3명 안됨</span>
-            <span><div class="legend-box level-4"></div>4~6명 안됨</span>
-            <span><div class="legend-box level-7"></div>7~9명 안됨</span>
-            <span><div class="legend-box level-10"></div>10~12명 안됨</span>
-            <span><div class="legend-box level-13"></div>13~14명 안됨</span>
-            <span><div class="legend-box level-15" style="background:#212121"></div>15명 전원 불가 ☠️</span>
+            <span><div class="legend-box level-1"></div>1명 안됨</span>
+            <span><div class="legend-box level-2"></div>2명 안됨</span>
+            <span><div class="legend-box level-4" style="background:#212121"></div>전원 불가 ☠️</span>
             <span><div class="legend-box" style="background:#4CAF50; border-radius:50%"></div><b>약속 확정!</b></span>
         </div>
     </div>
@@ -296,7 +285,14 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const ROOM_ID = 'meeting_room_1';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const ROOM_ID = urlParams.get('room') || 'default_room';
+
+        const subtitleEl = document.querySelector('.subtitle');
+        if (ROOM_ID !== 'default_room') {
+            subtitleEl.innerHTML += `<br><span style="color:#4CAF50; font-weight:bold;">🏠 현재 방 ID: ${ROOM_ID}</span>`;
+        }
 
         let today = new Date();
         let currentYear = today.getFullYear();
@@ -306,7 +302,9 @@
         let isDragging = false;
         let isSelecting = true; 
         let isConfirmMode = false;
-        let confirmedMeeting = null;
+        
+        // 🌟 [변경점] 단일 오브젝트가 아니라 복수 지정을 위해 딕셔너리로 변경
+        let confirmedMeetings = {}; 
 
         let scheduleData = {}; 
         let users = new Set(); 
@@ -337,9 +335,9 @@
             statusText.innerText = `참여자: ${Array.from(users).join(', ')} (${users.size}명)`;
         });
 
-        // 실시간 확정 약속 동기화
-        onValue(ref(db, ROOM_ID + '/confirmedMeeting'), (snapshot) => {
-            confirmedMeeting = snapshot.val();
+        // 🌟 [변경점] 실시간 복수 확정 데이터 동기화 감시
+        onValue(ref(db, ROOM_ID + '/confirmedMeetings'), (snapshot) => {
+            confirmedMeetings = snapshot.val() || {};
             updateCalendarColors();
         });
 
@@ -413,15 +411,13 @@
             if (isConfirmMode) toggleConfirmMode(); 
             
             const name = document.getElementById('userName').value.trim();
-            if (!name) { alert("이름을 먼저 입력해주세요!"); return; }
-            
-            // 🌟 [변경점] 차단 한도를 4명에서 15명으로 확장
-            if (users.size >= 15 && !users.has(name)) { alert("이미 15명이 꽉 찼습니다!"); return; }
+            if (!name) { alert("이름 먼저 입력해주삼~"); return; }
+            if (users.size >= 4 && !users.has(name)) { alert("이미 4명이 꽉 찼습니다!"); return; }
 
             currentUser = name;
             users.add(name);
             statusText.innerText = `참여자: ${Array.from(users).join(', ')} (${users.size}명)`;
-            alert(`[${name}]님, 달력에서 '안 되는 날짜'를 찍어주세요!`);
+            alert(`[${name}]님, 달력에서 '안 되는 날짜' 선택!`);
         }
 
         function toggleConfirmMode() {
@@ -431,7 +427,7 @@
                 confirmBtn.innerText = "확정 날짜 찍기...";
             } else {
                 confirmBtn.classList.remove('active');
-                confirmBtn.innerText = "약속 확정 🎯";
+                confirmBtn.innerText = "약속 확정~🎯";
             }
         }
 
@@ -439,12 +435,14 @@
             if (!cell || cell.classList.contains('empty')) return;
             const dateKey = cell.dataset.date;
 
+            // [확정 모드] 처리
             if (isConfirmMode) {
                 if (isHoverEvent) return; 
                 
-                if (confirmedMeeting && confirmedMeeting.dateKey === dateKey) {
+                // 🌟 [변경점] 이미 등록된 약속이 있다면 해당 날짜만 개별 취소 가능
+                if (confirmedMeetings && confirmedMeetings[dateKey]) {
                     if (confirm("이 날짜의 약속 확정을 취소하시겠습니까?")) {
-                        set(ref(db, ROOM_ID + '/confirmedMeeting'), null);
+                        set(ref(db, ROOM_ID + '/confirmedMeetings/' + dateKey), null);
                     }
                     toggleConfirmMode();
                     return;
@@ -454,12 +452,14 @@
                 const locationInput = prompt(`${y}년 ${m}월 ${d}일로 약속을 확정합니다!\n만날 장소나 메모를 입력해주세요:`, "강남역 2번 출구");
                 
                 if (locationInput !== null) {
-                    set(ref(db, ROOM_ID + '/confirmedMeeting'), { dateKey: dateKey, location: locationInput });
+                    // 🌟 [변경점] 덮어쓰지 않고 날짜 고유 키값 밑에 각각 저장
+                    set(ref(db, ROOM_ID + '/confirmedMeetings/' + dateKey), { location: locationInput });
                     toggleConfirmMode(); 
                 }
                 return;
             }
 
+            // [일반 입력 모드] 처리
             if (!currentUser) { 
                 if (!isHoverEvent) alert("이름을 먼저 입력하고 [일정 입력]을 눌러주세요!"); 
                 return; 
@@ -529,29 +529,19 @@
                 const locationTextDiv = cell.querySelector('.location-text');
                 const busyListDiv = cell.querySelector('.busy-list');
                 
-                // 🌟 [변경점] 15명 인원수에 맞는 그라데이션 클래스 매핑
                 cell.className = `date-cell level-${count}`;
                 locationTextDiv.innerText = "";
                 
                 if (count > 0) {
-                    // 🌟 [변경점] 15명 전원 불가 판별 및 이름 표기 가독성 최적화
-                    if (count >= 15) {
-                        busyListDiv.innerText = "전원 불가 ☠️";
-                    } else {
-                        // 인원이 너무 많아 칸을 넘치면 뒤를 '외 X명'으로 줄여서 에러 방지
-                        if (count > 3) {
-                            busyListDiv.innerText = `${busyUsers.slice(0, 2).join(', ')} 외 ${count - 2}명 ❌`;
-                        } else {
-                            busyListDiv.innerText = busyUsers.join(', ') + " ❌";
-                        }
-                    }
+                    busyListDiv.innerText = (count >= 4) ? "전원 불가" : busyUsers.join(', ') + " ❌";
                 } else {
                     busyListDiv.innerText = "";
                 }
 
-                if (confirmedMeeting && confirmedMeeting.dateKey === dateKey) {
+                // 🌟 [변경점] 딕셔너리 안에 내 날짜 키가 들어있다면 전부 초록색으로 활성화
+                if (confirmedMeetings && confirmedMeetings[dateKey]) {
                     cell.className = `date-cell is-confirmed`; 
-                    locationTextDiv.innerText = "📍 " + confirmedMeeting.location;
+                    locationTextDiv.innerText = "📍 " + confirmedMeetings[dateKey].location;
                     busyListDiv.innerText = "🎉";
                 }
             });
