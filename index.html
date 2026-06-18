@@ -451,7 +451,7 @@
                 }
                 
                 const [y, m, d] = dateKey.split('-');
-                const locationInput = prompt(`${y}년 ${m}월 ${d}일로 약속을 확정합니다!\n:`, "");
+                const locationInput = prompt(`${y}년 ${m}월 ${d}일에 보자구\n:`, "");
                 
                 if (locationInput !== null) {
                     set(ref(db, ROOM_ID + '/confirmedMeetings/' + dateKey), { location: locationInput });
