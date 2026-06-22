@@ -497,13 +497,14 @@
 
         let lastTouchCell = null;
 
-        calendar.addEventListener('touchstart', (e) => {
-            const cell = e.target.closest('.date-cell');
-            if (cell && !isConfirmMode && currentUser) {
-                e.preventDefault(); 
-            }
-            processCellAction(cell, false);
-        }, { passive: false });
+// 모바일 터치 시 마우스 클릭 이벤트가 연달아 터지는 중복 현상을 완벽히 차단
+calendar.addEventListener('touchstart', (e) => {
+    const cell = e.target.closest('.date-cell');
+    if (cell) {
+        e.preventDefault(); // 핵심: 이름 유무 상관없이 마우스 중복 연산을 무조건 원천 차단
+        processCellAction(cell, false);
+    }
+}, { passive: false });
 
         calendar.addEventListener('touchmove', (e) => {
             if (!isDragging) return;
